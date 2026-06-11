@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import ArticleList from './components/ArticleList';
 import CreateArticleForm from './components/CreateArticleForm';
 import UpdateArticleForm from './components/UpdateArticleForm';
@@ -9,7 +9,6 @@ function App() {
     <div style={{ padding: '20px' }}>
       <h1>📰 News Article Management</h1>
 
-  
       {/* Routes */}
       <Routes>
         <Route path="/" element={<ArticleList />} />

@@ -1,65 +1,127 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
+
+const api = axios.create({ baseURL: 'http://localhost:5000' });
 
 export default function ArticleFilter() {
   const [articles, setArticles] = useState([]);
-  // Fetch all articles when component mounts
+  const [journalists, setJournalists] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedJournalist, setSelectedJournalist] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [error, setError] = useState('');
+
+  const fetchArticles = useCallback(async (journalistId = '', categoryId = '') => {
+    setError('');
+
+    try {
+      let path = '/articles';
+
+      if (journalistId && categoryId) {
+        path = `/articles?journalistId=${journalistId}&categoryId=${categoryId}`;
+      } else if (journalistId) {
+        path = `/journalists/${journalistId}/articles`;
+      } else if (categoryId) {
+        path = `/categories/${categoryId}/articles`;
+      }
+
+      const res = await api.get(path);
+      setArticles(res.data);
+    } catch (err) {
+      console.error(err);
+      setError('Could not load articles. Make sure the API server is running');
+    }
+  }, []);
+
+  const fetchJournalists = useCallback(async () => {
+    try {
+      const res = await api.get('/journalists');
+      setJournalists(res.data);
+    } catch (err) {
+      console.error(err);
+      setError('Could not load journalists.');
+    }
+  }, []);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await api.get('/categories');
+      setCategories(res.data);
+    } catch (err) {
+      console.error(err);
+      setError('Could not load categories.');
+    }
+  }, []);
+
   useEffect(() => {
     fetchArticles();
     fetchJournalists();
     fetchCategories();
-  }, []);
+  }, [fetchArticles, fetchJournalists, fetchCategories]);
 
-  const fetchArticles = async () => {
-    // Fetch articles from the API
+  const handleApplyFilters = () => {
+    fetchArticles(selectedJournalist, selectedCategory);
   };
 
-  const fetchJournalists = async () => {
-    // Fetch journalists from the API
+  const handleResetFilters = () => {
+    setSelectedJournalist('');
+    setSelectedCategory('');
+    fetchArticles();
   };
-
-  const fetchCategories = async () => {
-    // Fetch categories from the API
-  }
 
   return (
     <div>
       <h2>Articles</h2>
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <label htmlFor="journalistFilter">Filter by Journalist:</label>
-        <select id="journalistFilter">
+        <select
+          id="journalistFilter"
+          value={selectedJournalist}
+          onChange={event => setSelectedJournalist(event.target.value)}
+        >
           <option value="">All Journalists</option>
-          {/* Options for journalists */}
+          {journalists.map(journalist => (
+            <option key={journalist.id} value={journalist.id}>
+              {journalist.name}
+            </option>
+          ))}
         </select>
 
         <label htmlFor="categoryFilter">Filter by Category:</label>
-        <select id="categoryFilter">
+        <select
+          id="categoryFilter"
+          value={selectedCategory}
+          onChange={event => setSelectedCategory(event.target.value)}
+        >
           <option value="">All Categories</option>
-          {/* Options for categories */}
+          {categories.map(category => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
         </select>
 
-        <button
-          onClick={() => {
-            // Logic to apply filters
-          }}
-        >Apply Filters</button>
-        <button
-          onClick={() => {
-            // Logic to reset filters
-          }}
-        >Reset Filters</button>
+        <button onClick={handleApplyFilters}>Apply Filters</button>
+        <button onClick={handleResetFilters}>Reset Filters</button>
       </div>
 
-      <ul>
-        {articles.map(article => (
-          <li key={article.id}>
-            <strong>{article.title}</strong> <br />
-            <small>By Journalist #{article.journalistId} | Category #{article.categoryId}</small><br />
-            <button disabled>Delete</button>
-            <button disabled>Update</button>
-            <button disabled>View</button>
-          </li>
-        ))}
-      </ul>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      {articles.length === 0 ? (
+        <p>No articles found.</p>
+      ) : (
+        <ul>
+          {articles.map(article => (
+            <li key={article.id}>
+              <strong>{article.title}</strong> <br />
+              <p>{article.content}</p>
+              <small>
+                By Journalist #{article.journalistId} | Category #{article.categoryId}
+              </small>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

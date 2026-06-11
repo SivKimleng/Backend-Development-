@@ -1,41 +1,27 @@
 // server.js
 import express from 'express';
 import courses from "./course.js";
+import logger from "./logger.js";
+import validateQuery from "./validateQuery.js";
+import auth from "./auth.js";
+
 const app = express();
 const PORT = 3000;
 
+app.use(logger);
+
 // Route: GET /departments/:dept/courses
-app.get('/departments/:dept/courses', (req, res) => {
+app.get('/departments/:dept/courses', auth, validateQuery, (req, res) => {
     const { dept } = req.params;
-    const { level, minCredits, maxCredits, semester, instructor } = req.query;
+    const { level, semester, instructor } = req.query;
     const normalizedDept = dept.toUpperCase();
-    const parsedMinCredits = minCredits !== undefined ? Number(minCredits) : undefined;
-    const parsedMaxCredits = maxCredits !== undefined ? Number(maxCredits) : undefined;
-
-    if (
-        (minCredits !== undefined && Number.isNaN(parsedMinCredits)) ||
-        (maxCredits !== undefined && Number.isNaN(parsedMaxCredits))
-    ) {
-        return res.status(400).json({
-            error: 'Invalid credit range. minCredits and maxCredits must be numbers.'
-        });
-    }
-
-    if (
-        parsedMinCredits !== undefined &&
-        parsedMaxCredits !== undefined &&
-        parsedMinCredits > parsedMaxCredits
-    ) {
-        return res.status(400).json({
-            error: 'Invalid credit range. minCredits cannot be greater than maxCredits.'
-        });
-    }
+    const { minCredits, maxCredits } = req.validatedCredits;
 
     const filteredCourses = courses.filter((course) => {
         if (course.department !== normalizedDept) return false;
         if (level && course.level !== level.toLowerCase()) return false;
-        if (parsedMinCredits !== undefined && course.credits < parsedMinCredits) return false;
-        if (parsedMaxCredits !== undefined && course.credits > parsedMaxCredits) return false;
+        if (minCredits !== undefined && course.credits < minCredits) return false;
+        if (maxCredits !== undefined && course.credits > maxCredits) return false;
         if (semester && course.semester !== semester.toLowerCase()) return false;
         if (
             instructor &&
